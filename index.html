@@ -1,0 +1,1101 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Three-Body Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: observatory console. A full-bleed night-sky canvas beside a brass-trimmed instrument rail; history reads like an almanac. Single dark world by design. */
+:root{
+  color-scheme:dark;
+  --ink:#090b15; --deep:#0d1020; --panel:#11152a; --panel2:#181d36; --line:#252b4a; --line2:#353c64;
+  --fg:#ece7da; --muted:#a3a5bf; --dim:#6f7393;
+  --brass:#d9a75a; --brass-hi:#f0cf8e;
+  --b1:#ff7a59; --b2:#f3d27a; --b3:#79c6ff;
+  --good:#7fd1a3; --warn:#f2b45a; --bad:#ff6b6b;
+  --display:'Bodoni Moda','Didot','Bodoni 72',Georgia,serif;
+  --body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--ink);color:var(--fg);font:15px/1.55 var(--body)}
+button{font:inherit}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;padding:10px 20px;background:color-mix(in srgb,var(--ink) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{width:30px;height:30px;flex:none}
+.brand .name{font-family:var(--display);font-size:1.35rem;font-weight:500;letter-spacing:.005em;white-space:nowrap}
+.brand em{color:var(--brass);font-style:italic}
+.tabs{display:flex;gap:2px;overflow-x:auto;max-width:100%;scrollbar-width:none}
+.tabs button{background:none;border:0;color:var(--muted);padding:10px 14px;font:500 .78rem var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0}
+.tabs button:hover{color:var(--fg)}
+.tabs button[aria-selected="true"]{color:var(--fg);box-shadow:inset 0 -2px var(--brass)}
+.tabs button:focus-visible,.btn:focus-visible,.ibtn:focus-visible,select:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.wrap{max-width:1560px;margin:0 auto;padding-inline:16px;padding-block:16px 56px}
+.eyebrow{font:500 .7rem/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+
+/* ---------- Simulator ---------- */
+.sim-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;height:clamp(540px,76vh,900px)}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--ink);min-width:0;touch-action:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+.stage canvas.grabbing{cursor:grabbing}
+.hud-tl{position:absolute;left:18px;top:14px;max-width:min(460px,58%);pointer-events:none}
+.hud-tl h1{font-family:var(--display);font-weight:500;font-size:clamp(1.5rem,2.8vw,2.4rem);line-height:1.05;margin:.35rem 0 .35rem;text-wrap:balance}
+.hud-tl p{margin:0;color:var(--muted);font-size:.86rem;line-height:1.5;max-width:48ch;text-shadow:0 1px 8px var(--ink)}
+.toolbar{position:absolute;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:40%}
+.ibtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line2);background:color-mix(in srgb,var(--panel) 82%,transparent);color:var(--fg);display:grid;place-items:center;cursor:pointer;padding:0}
+.ibtn:hover{border-color:var(--brass)}
+.ibtn.primary{background:var(--brass);color:var(--ink);border-color:var(--brass)}
+.ibtn svg{width:18px;height:18px}
+.hud-bl{position:absolute;left:18px;bottom:14px;font:500 .82rem/1.5 var(--mono);color:var(--fg);pointer-events:none;font-variant-numeric:tabular-nums;text-shadow:0 1px 6px var(--ink)}
+.hud-bl span{color:var(--muted)}
+.hud-br{position:absolute;right:16px;bottom:14px;font-size:.75rem;color:var(--dim);pointer-events:none;text-align:right;max-width:44%}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto;min-width:0;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.panel details{border-bottom:1px solid var(--line)}
+.panel details:last-child{border-bottom:0}
+.panel summary{list-style:none;cursor:pointer;padding:13px 16px;font:500 .74rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brass);display:flex;justify-content:space-between;align-items:center}
+.panel summary::-webkit-details-marker{display:none}
+.panel summary::after{content:'+';color:var(--dim);font-size:1rem}
+.panel details[open]>summary::after{content:'−'}
+.panel summary:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+.group{padding:0 16px 16px;display:grid;gap:13px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.84rem;margin-bottom:2px}
+.ctl output{font:.76rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctl .lbl{display:flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line2);border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--brass);margin-top:-6px;border:2px solid var(--panel)}
+input[type=range]::-moz-range-track{height:3px;background:var(--line2);border-radius:3px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--brass);border:2px solid var(--panel)}
+input[type=range]:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:4px}
+select{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;font:inherit;font-size:.88rem}
+.sel label{display:block;font-size:.84rem;margin-bottom:5px}
+.tog{display:flex;align-items:center;gap:10px;font-size:.85rem;cursor:pointer;position:relative}
+.tog input{position:absolute;opacity:0;width:1px;height:1px}
+.tog .sw{width:32px;height:18px;border-radius:18px;background:var(--line2);position:relative;flex:none;transition:background .2s}
+.tog .sw::after{content:'';position:absolute;left:3px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--fg);transition:transform .2s,background .2s}
+.tog input:checked+.sw{background:var(--brass)}
+.tog input:checked+.sw::after{transform:translateX(14px);background:var(--ink)}
+.tog input:focus-visible+.sw{outline:2px solid var(--brass);outline-offset:2px}
+.togs{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1 1 auto;padding:8px 12px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);color:var(--fg);font:500 .83rem var(--body);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--brass)}
+.btn.accent{background:var(--brass);color:var(--ink);border-color:var(--brass)}
+.note{font-size:.8rem;color:var(--muted);margin:0;line-height:1.5}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:16px}
+.stat{background:var(--panel);padding:12px 14px;min-width:0}
+.stat .k{font:500 .66rem var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat .v{font:500 1.02rem var(--mono);font-variant-numeric:tabular-nums;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v.good{color:var(--good)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px 10px;min-width:0}
+.chart header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.chart h3{margin:0;font:600 .9rem var(--body)}
+.chart .sub{font-size:.76rem;color:var(--muted)}
+.chart canvas{width:100%;height:130px;display:block}
+
+/* ---------- Section heads ---------- */
+.sec-head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px 40px;align-items:end;margin:8px 0 22px}
+.sec-head h2{font-family:var(--display);font-weight:500;font-size:clamp(2rem,4.4vw,3.4rem);line-height:1.02;margin:.4rem 0 0;text-wrap:balance}
+.sec-head h2 em{color:var(--brass)}
+.sec-head p{margin:0;color:var(--muted);max-width:60ch}
+
+/* ---------- Lagrange ---------- */
+.lag-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;height:clamp(520px,72vh,860px)}
+.lag-stage canvas{cursor:crosshair}
+.ltable{width:100%;border-collapse:collapse;font:.76rem var(--mono);font-variant-numeric:tabular-nums}
+.ltable th{text-align:left;color:var(--dim);font-weight:500;padding:4px 0;border-bottom:1px solid var(--line)}
+.ltable td{padding:5px 0;border-bottom:1px solid var(--line)}
+.ltable td:first-child{color:var(--brass)}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 .72rem var(--mono);letter-spacing:.06em;padding:4px 9px;border-radius:999px;border:1px solid currentColor}
+.chip.ok{color:var(--good)} .chip.no{color:var(--warn)}
+
+/* ---------- Gallery ---------- */
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0;transition:border-color .2s}
+.gcard:hover{border-color:var(--line2)}
+.gcard canvas{width:100%;aspect-ratio:4/3;display:block;background:var(--ink);cursor:pointer;max-width:100%}
+.gmeta{padding:12px 14px 14px;display:grid;gap:6px;flex:1;align-content:start}
+.gmeta h3{margin:0;font:500 1.35rem/1.1 var(--display)}
+.gnum{font:.72rem/1.5 var(--mono);color:var(--muted);margin:0;font-variant-numeric:tabular-nums}
+.gmeta .btn{margin-top:4px;justify-self:start;flex:none}
+
+/* ---------- History ---------- */
+.versus{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.versus figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.versus canvas{width:100%;aspect-ratio:16/9;display:block;background:var(--ink);max-width:100%}
+.versus figcaption{padding:10px 14px;font-size:.85rem;color:var(--muted)}
+.versus figcaption b{color:var(--fg);font-weight:600}
+.counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:40px}
+.counts div{background:var(--panel);padding:18px 18px 16px}
+.counts b{display:block;font:500 clamp(2.2rem,5vw,3.4rem)/1 var(--display);color:var(--brass);font-variant-numeric:lining-nums}
+.counts span{display:block;font-size:.85rem;color:var(--muted);margin-top:8px;max-width:34ch}
+.era{font-family:var(--display);font-style:italic;font-weight:500;font-size:1.5rem;margin:36px 0 6px;color:var(--fg);display:flex;align-items:center;gap:14px}
+.era::after{content:'';flex:1;height:1px;background:var(--line)}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 28px;padding:20px 0;border-bottom:1px solid var(--line)}
+.tl .yr{font:500 1.9rem/1 var(--display);color:var(--brass);font-variant-numeric:lining-nums}
+.tl h3{margin:0 0 2px;font:600 1.05rem/1.35 var(--body)}
+.tl .who{font:.74rem var(--mono);letter-spacing:.06em;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+.tl p{margin:0;color:var(--muted);max-width:68ch}
+.tl .btn{margin-top:12px;flex:none}
+footer{max-width:1560px;margin:0 auto;padding-inline:16px;padding-block:0 32px;color:var(--dim);font-size:.78rem}
+
+@media (max-width:980px){
+  .sim-grid,.lag-grid{grid-template-columns:1fr;height:auto}
+  .stage{height:min(64vh,580px);min-height:380px}
+  .panel{max-height:none}
+  .charts{grid-template-columns:1fr}
+  .hud-br{display:none}
+  .sec-head{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .hud-tl p{display:none}
+  .hud-tl{max-width:55%}
+  .toolbar{max-width:48%}
+  .ibtn{width:34px;height:34px}
+  .versus{grid-template-columns:1fr}
+  .counts{grid-template-columns:1fr}
+  .tl li{grid-template-columns:1fr}
+  .brand .name{font-size:1.15rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="none" stroke="var(--line2)" stroke-width="1"/><circle cx="16" cy="4" r="3" fill="var(--b1)"/><circle cx="5.6" cy="22" r="3" fill="var(--b2)"/><circle cx="26.4" cy="22" r="3" fill="var(--b3)"/></svg>
+    <span class="name">Three-Body <em>Observatory</em></span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-sim" data-tab="sim" aria-selected="true">Simulator</button>
+    <button role="tab" id="tab-lagrange" data-tab="lagrange" aria-selected="false">Lagrange points</button>
+    <button role="tab" id="tab-gallery" data-tab="gallery" aria-selected="false">Orbit gallery</button>
+    <button role="tab" id="tab-history" data-tab="history" aria-selected="false">History</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <!-- ================= SIMULATOR ================= -->
+  <section class="tab" data-pane="sim" role="tabpanel" aria-labelledby="tab-sim">
+    <div class="sim-grid">
+      <div class="stage" id="stage">
+        <canvas id="simCv" aria-label="Three-body simulation"></canvas>
+        <div class="hud-tl">
+          <div class="eyebrow" id="hudGroup"></div>
+          <h1 id="hudName"></h1>
+          <p id="hudDesc"></p>
+        </div>
+        <div class="toolbar">
+          <button class="ibtn primary" id="bPlay" title="Play / pause (Space)" aria-label="Play or pause"></button>
+          <button class="ibtn" id="bStep" title="Step forward (.)" aria-label="Step forward"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5l9 7-9 7z"/><rect x="16" y="5" width="2.4" height="14"/></svg></button>
+          <button class="ibtn" id="bReset" title="Reset scenario (R)" aria-label="Reset scenario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg></button>
+          <button class="ibtn" id="bRev" title="Reverse time (V)" aria-label="Reverse all velocities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></button>
+          <button class="ibtn" id="bZin" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></button>
+          <button class="ibtn" id="bZout" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4M8 11h6"/></svg></button>
+          <button class="ibtn" id="bFit" title="Follow and auto-fit (F)" aria-label="Follow and auto-fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></button>
+          <button class="ibtn" id="bFull" title="Fullscreen" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+        </div>
+        <div class="hud-bl" id="clock"></div>
+        <div class="hud-br">Scroll to zoom · drag space to pan<br>Pause, then drag a body or the ring at its velocity tip</div>
+      </div>
+      <aside class="panel" id="panel" aria-label="Simulation controls"></aside>
+    </div>
+
+    <div class="strip">
+      <div class="stat"><div class="k">Time t</div><div class="v" id="rT">0</div></div>
+      <div class="stat"><div class="k">Total energy E</div><div class="v" id="rE">0</div></div>
+      <div class="stat"><div class="k">Energy drift |ΔE/E₀|</div><div class="v" id="rdE">0</div></div>
+      <div class="stat"><div class="k">Angular mom. L<sub>z</sub></div><div class="v" id="rL">0</div></div>
+      <div class="stat"><div class="k">Step size h</div><div class="v" id="rH">0</div></div>
+      <div class="stat"><div class="k">Steps / frame</div><div class="v" id="rS">0</div></div>
+      <div class="stat"><div class="k">Twins split at</div><div class="v" id="rP">off</div></div>
+    </div>
+    <div class="charts">
+      <div class="chart">
+        <header><h3>Energy error</h3><span class="sub">log₁₀ |ΔE/E₀| · a perfect integrator stays flat</span></header>
+        <canvas id="chE"></canvas>
+      </div>
+      <div class="chart">
+        <header><h3>Twin divergence</h3><span class="sub">log₁₀ phase-space distance to perturbed twins</span></header>
+        <canvas id="chD"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LAGRANGE ================= -->
+  <section class="tab" data-pane="lagrange" role="tabpanel" aria-labelledby="tab-lagrange" hidden>
+    <div class="sec-head">
+      <div><div class="eyebrow">Circular restricted three-body problem</div><h2>The landscape of <em>balance points</em></h2></div>
+      <p>Two massive bodies circle each other; a third is too light to pull back. In the frame that turns with them, gravity and the centrifugal effect combine into the effective potential shown here. Its five flat spots are the Lagrange points. Click to drop a particle at rest, or drag to launch it. Hatched areas are closed to the selected particle by its Jacobi constant.</p>
+    </div>
+    <div class="lag-grid">
+      <div class="stage lag-stage" id="lagStage"><canvas id="lagCv" aria-label="Restricted three-body potential map"></canvas>
+        <div class="hud-bl" id="lagClock"></div>
+      </div>
+      <aside class="panel" id="lagPanel" aria-label="Lagrange controls"></aside>
+    </div>
+  </section>
+
+  <!-- ================= GALLERY ================= -->
+  <section class="tab" data-pane="gallery" role="tabpanel" aria-labelledby="tab-gallery" hidden>
+    <div class="sec-head">
+      <div><div class="eyebrow">Periodic solutions</div><h2>Islands of <em>order</em></h2></div>
+      <p>Almost every three-body start leads to chaos, yet a thin set of starting conditions returns exactly to itself. Each card computes one full period from the published initial conditions and loops it. Most of these orbits are unstable: run one in the simulator and watch it hold for a few laps before it breaks.</p>
+    </div>
+    <div class="ggrid" id="ggrid"></div>
+  </section>
+
+  <!-- ================= HISTORY ================= -->
+  <section class="tab" data-pane="history" role="tabpanel" aria-labelledby="tab-history" hidden>
+    <div class="sec-head">
+      <div><div class="eyebrow">1687 – today</div><h2>Three bodies, <em>no formula</em></h2></div>
+      <p>Newton gave the world an exact answer for two gravitating bodies. Add a third and the exact answer disappears. Over three centuries the search for it produced celestial mechanics, the first glimpse of chaos, and a hunt for rare periodic orbits that is still going.</p>
+    </div>
+    <div class="versus">
+      <figure><canvas id="hv2" aria-label="Two-body orbit"></canvas><figcaption><b>Two bodies.</b> Each traces a fixed ellipse, forever. Kepler's laws give the position at any future time.</figcaption></figure>
+      <figure><canvas id="hv3" aria-label="Three-body chaotic orbit"></canvas><figcaption><b>Three bodies.</b> A random bound start. The paths never repeat, and no closed formula gives the state at time t.</figcaption></figure>
+    </div>
+    <div class="counts">
+      <div><b>18</b><span>numbers fix the state in space: a position and a velocity, three components each, for three bodies.</span></div>
+      <div><b>10</b><span>conserved quantities exist: energy, three of momentum, three of angular momentum, three for the steady drift of the center of mass.</span></div>
+      <div><b>0</b><span>further algebraic conserved quantities, as Heinrich Bruns proved in 1887. Not enough constraints remain to pin the motion down.</span></div>
+    </div>
+    <div id="timeline"></div>
+  </section>
+</main>
+<footer>Units: G = 1 throughout. Periodic orbits use the scale-free initial conditions from the original papers. Integrators run in double precision in your browser.</footer>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let DPR = Math.min(window.devicePixelRatio || 1, 2);
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COL = { ink: cssv('--ink'), panel: cssv('--panel'), fg: cssv('--fg'), muted: cssv('--muted'), dim: cssv('--dim'), line: cssv('--line'), line2: cssv('--line2'), brass: cssv('--brass'), good: cssv('--good'), warn: cssv('--warn'), bad: cssv('--bad'), b3: cssv('--b3') };
+function rgba(hex, a) { const h = hex.replace('#', ''); const n = parseInt(h.length === 3 ? h.replace(/(.)/g, '$1$1') : h, 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+
+/* =====================================================================
+   PHYSICS CORE  — N-body (used with N = 3, and 2 for the history demo)
+   ===================================================================== */
+class Sys {
+  constructor(m, p, v, G = 1, eps = 0) {
+    const n = m.length; this.n = n; this.m = Float64Array.from(m);
+    this.x = Float64Array.from(p.map(q => q[0])); this.y = Float64Array.from(p.map(q => q[1]));
+    this.vx = Float64Array.from(v.map(q => q[0])); this.vy = Float64Array.from(v.map(q => q[1]));
+    this.G = G; this.e2 = eps * eps; this.t = 0; this.mk();
+  }
+  mk() { const n = this.n, f = () => new Float64Array(n); this.ax = f(); this.ay = f();
+    this.T = { tx: f(), ty: f(), tvx: f(), tvy: f(), ax: f(), ay: f(), sx: f(), sy: f(), svx: f(), svy: f() }; }
+  clone() { const s = Object.create(Sys.prototype); s.n = this.n; s.m = this.m.slice(); s.x = this.x.slice(); s.y = this.y.slice();
+    s.vx = this.vx.slice(); s.vy = this.vy.slice(); s.G = this.G; s.e2 = this.e2; s.t = this.t; s.mk(); return s; }
+}
+function acc(s, x, y, ax, ay) {
+  const n = s.n, m = s.m, G = s.G, e2 = s.e2;
+  for (let i = 0; i < n; i++) { ax[i] = 0; ay[i] = 0; }
+  for (let i = 0; i < n; i++) { const xi = x[i], yi = y[i];
+    for (let j = i + 1; j < n; j++) {
+      const dx = x[j] - xi, dy = y[j] - yi; let r2 = dx * dx + dy * dy + e2; if (r2 < 1e-18) r2 = 1e-18;
+      const k = G / (r2 * Math.sqrt(r2));
+      ax[i] += k * m[j] * dx; ay[i] += k * m[j] * dy; ax[j] -= k * m[i] * dx; ay[j] -= k * m[i] * dy;
+    } }
+}
+const W1 = 1 / (2 - Math.cbrt(2)), W0 = -Math.cbrt(2) / (2 - Math.cbrt(2));
+const YC = [W1 / 2, (W0 + W1) / 2, (W0 + W1) / 2, W1 / 2], YD = [W1, W0, W1];
+const STEP = {
+  euler(s, h) { acc(s, s.x, s.y, s.ax, s.ay); for (let i = 0; i < s.n; i++) { s.x[i] += h * s.vx[i]; s.y[i] += h * s.vy[i]; s.vx[i] += h * s.ax[i]; s.vy[i] += h * s.ay[i]; } },
+  leapfrog(s, h) { const n = s.n; acc(s, s.x, s.y, s.ax, s.ay);
+    for (let i = 0; i < n; i++) { s.vx[i] += .5 * h * s.ax[i]; s.vy[i] += .5 * h * s.ay[i]; s.x[i] += h * s.vx[i]; s.y[i] += h * s.vy[i]; }
+    acc(s, s.x, s.y, s.ax, s.ay); for (let i = 0; i < n; i++) { s.vx[i] += .5 * h * s.ax[i]; s.vy[i] += .5 * h * s.ay[i]; } },
+  yoshida(s, h) { const n = s.n;
+    for (let k = 0; k < 4; k++) {
+      for (let i = 0; i < n; i++) { s.x[i] += YC[k] * h * s.vx[i]; s.y[i] += YC[k] * h * s.vy[i]; }
+      if (k < 3) { acc(s, s.x, s.y, s.ax, s.ay); for (let i = 0; i < n; i++) { s.vx[i] += YD[k] * h * s.ax[i]; s.vy[i] += YD[k] * h * s.ay[i]; } }
+    } },
+  rk4(s, h) { const n = s.n, T = s.T, x = s.x, y = s.y, vx = s.vx, vy = s.vy;
+    acc(s, x, y, T.ax, T.ay);
+    for (let i = 0; i < n; i++) { T.sx[i] = vx[i]; T.sy[i] = vy[i]; T.svx[i] = T.ax[i]; T.svy[i] = T.ay[i];
+      T.tx[i] = x[i] + .5 * h * vx[i]; T.ty[i] = y[i] + .5 * h * vy[i]; T.tvx[i] = vx[i] + .5 * h * T.ax[i]; T.tvy[i] = vy[i] + .5 * h * T.ay[i]; }
+    acc(s, T.tx, T.ty, T.ax, T.ay);
+    for (let i = 0; i < n; i++) { const kx = T.tvx[i], ky = T.tvy[i], kvx = T.ax[i], kvy = T.ay[i];
+      T.sx[i] += 2 * kx; T.sy[i] += 2 * ky; T.svx[i] += 2 * kvx; T.svy[i] += 2 * kvy;
+      T.tx[i] = x[i] + .5 * h * kx; T.ty[i] = y[i] + .5 * h * ky; T.tvx[i] = vx[i] + .5 * h * kvx; T.tvy[i] = vy[i] + .5 * h * kvy; }
+    acc(s, T.tx, T.ty, T.ax, T.ay);
+    for (let i = 0; i < n; i++) { const kx = T.tvx[i], ky = T.tvy[i], kvx = T.ax[i], kvy = T.ay[i];
+      T.sx[i] += 2 * kx; T.sy[i] += 2 * ky; T.svx[i] += 2 * kvx; T.svy[i] += 2 * kvy;
+      T.tx[i] = x[i] + h * kx; T.ty[i] = y[i] + h * ky; T.tvx[i] = vx[i] + h * kvx; T.tvy[i] = vy[i] + h * kvy; }
+    acc(s, T.tx, T.ty, T.ax, T.ay);
+    for (let i = 0; i < n; i++) {
+      x[i] += h / 6 * (T.sx[i] + T.tvx[i]); y[i] += h / 6 * (T.sy[i] + T.tvy[i]);
+      vx[i] += h / 6 * (T.svx[i] + T.ax[i]); vy[i] += h / 6 * (T.svy[i] + T.ay[i]); } }
+};
+function hStep(s, o) {
+  if (!o.adaptive) return o.dt;
+  let tm = Infinity; const n = s.n;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const dx = s.x[j] - s.x[i], dy = s.y[j] - s.y[i], dvx = s.vx[j] - s.vx[i], dvy = s.vy[j] - s.vy[i];
+    const r2 = dx * dx + dy * dy + s.e2, r = Math.sqrt(r2);
+    const tff = Math.sqrt(r2 * r / (s.G * (s.m[i] + s.m[j]) + 1e-30));
+    const v2 = dvx * dvx + dvy * dvy, tcr = v2 > 0 ? r / Math.sqrt(v2) : Infinity;
+    if (tff < tm) tm = tff; if (tcr < tm) tm = tcr;
+  }
+  return clamp(o.eta * tm, 1e-7, o.dt);
+}
+function advance(s, target, o, onStep, maxSteps) {
+  let k = 0; const fn = STEP[o.integrator];
+  while (k < maxSteps) {
+    const rem = target - s.t; if (Math.abs(rem) < 1e-12) break;
+    let h = hStep(s, o); const dir = rem > 0 ? 1 : -1; let last = false;
+    if (h >= Math.abs(rem)) { h = Math.abs(rem); last = true; }
+    fn(s, h * dir); s.t = last ? target : s.t + h * dir; k++; o.lastH = h;
+    if (onStep) onStep(s);
+  }
+  return k;
+}
+function energy(s) { let K = 0, U = 0; const n = s.n;
+  for (let i = 0; i < n; i++) { K += .5 * s.m[i] * (s.vx[i] * s.vx[i] + s.vy[i] * s.vy[i]);
+    for (let j = i + 1; j < n; j++) { const dx = s.x[j] - s.x[i], dy = s.y[j] - s.y[i]; U -= s.G * s.m[i] * s.m[j] / Math.sqrt(dx * dx + dy * dy + s.e2); } }
+  return { K, U, E: K + U }; }
+function angmom(s) { let L = 0; for (let i = 0; i < s.n; i++) L += s.m[i] * (s.x[i] * s.vy[i] - s.y[i] * s.vx[i]); return L; }
+function com(s) { let M = 0, x = 0, y = 0, vx = 0, vy = 0; for (let i = 0; i < s.n; i++) { const m = s.m[i]; M += m; x += m * s.x[i]; y += m * s.y[i]; vx += m * s.vx[i]; vy += m * s.vy[i]; } return { M, x: x / M, y: y / M, vx: vx / M, vy: vy / M }; }
+function centerCOM(s) { const c = com(s); for (let i = 0; i < s.n; i++) { s.x[i] -= c.x; s.y[i] -= c.y; s.vx[i] -= c.vx; s.vy[i] -= c.vy; } }
+function rmsRadius(s) { const c = com(s); let a = 0; for (let i = 0; i < s.n; i++) { const dx = s.x[i] - c.x, dy = s.y[i] - c.y; a += s.m[i] * (dx * dx + dy * dy); } return Math.sqrt(a / c.M); }
+
+/* ---------- Trails (ring buffers) ---------- */
+class Trail {
+  constructor(cap) { this.cap = cap; this.b = new Float32Array(cap * 2); this.h = 0; this.len = 0; this.lx = NaN; this.ly = NaN; this.lt = 0; }
+  push(x, y, t) { const i = this.h * 2; this.b[i] = x; this.b[i + 1] = y; this.h = (this.h + 1) % this.cap; if (this.len < this.cap) this.len++; this.lx = x; this.ly = y; this.lt = t; }
+  idx(k) { return (((this.h - this.len + k) % this.cap) + this.cap) % this.cap * 2; }
+  clear() { this.h = 0; this.len = 0; this.lx = NaN; }
+  resize(cap) { const keep = Math.min(this.len, cap), nb = new Float32Array(cap * 2);
+    for (let k = 0; k < keep; k++) { const i = this.idx(this.len - keep + k); nb[k * 2] = this.b[i]; nb[k * 2 + 1] = this.b[i + 1]; }
+    this.b = nb; this.cap = cap; this.len = keep; this.h = keep % cap; }
+}
+function sampleTrails(s, trs, minD2, sdt) {
+  for (let i = 0; i < s.n; i++) { const tr = trs[i], dx = s.x[i] - tr.lx, dy = s.y[i] - tr.ly;
+    if (!(dx * dx + dy * dy < minD2) || Math.abs(s.t - tr.lt) > sdt) tr.push(s.x[i], s.y[i], s.t); }
+}
+/* V = {cx, cy, s, ox, oy}: screen = (cx + (x-ox)s, cy - (y-oy)s) */
+function strokeTrail(c, tr, color, amax, width, style, V) {
+  const n = tr.len; if (n < 2) return;
+  const groups = style === 'solid' ? 1 : Math.min(30, n - 1), per = Math.ceil((n - 1) / groups);
+  const passes = style === 'glow' ? [[width * 5, .10, 'lighter'], [width * 2.2, .22, 'lighter'], [width, 1, 'source-over']] : [[width, 1, 'source-over']];
+  c.strokeStyle = color; c.lineCap = 'round'; c.lineJoin = 'round';
+  const b = tr.b;
+  for (const [lw, am, op] of passes) {
+    c.globalCompositeOperation = op;
+    for (let g = 0; g < groups; g++) {
+      const a = g * per, e = Math.min(n - 1, a + per); if (a >= e) continue;
+      const f = style === 'solid' ? 1 : (g + 1) / groups;
+      c.globalAlpha = amax * am * (style === 'solid' ? 1 : Math.pow(f, 1.5));
+      c.lineWidth = style === 'fade' ? lw * (.3 + .7 * f) : lw;
+      c.beginPath();
+      for (let k = a; k <= e; k++) { const i = tr.idx(k), X = V.cx + (b[i] - V.ox) * V.s, Y = V.cy - (b[i + 1] - V.oy) * V.s; k === a ? c.moveTo(X, Y) : c.lineTo(X, Y); }
+      c.stroke();
+    }
+  }
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+}
+const glowCache = {};
+function glowSprite(color) {
+  if (glowCache[color]) return glowCache[color];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d');
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, rgba(color, .9)); gr.addColorStop(.12, rgba(color, .45)); gr.addColorStop(.35, rgba(color, .12)); gr.addColorStop(1, rgba(color, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return (glowCache[color] = cv);
+}
+function drawBody(c, X, Y, r, color, glow) {
+  if (glow) { c.globalCompositeOperation = 'lighter'; const g = glowSprite(color), R = r * 6; c.drawImage(g, X - R, Y - R, 2 * R, 2 * R); c.globalCompositeOperation = 'source-over'; }
+  c.fillStyle = color; c.beginPath(); c.arc(X, Y, r, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.arc(X - r * .25, Y - r * .25, r * .42, 0, TAU); c.fill();
+}
+function arrow(c, x0, y0, x1, y1, color, w = 1.6) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy); if (L < 2) return;
+  const ux = dx / L, uy = dy / L, hs = Math.min(9, L * .4);
+  c.strokeStyle = color; c.fillStyle = color; c.lineWidth = w; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1 - ux * hs * .6, y1 - uy * hs * .6); c.stroke();
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 - ux * hs - uy * hs * .5, y1 - uy * hs + ux * hs * .5); c.lineTo(x1 - ux * hs + uy * hs * .5, y1 - uy * hs - ux * hs * .5); c.closePath(); c.fill();
+}
+function makeStars(w, h, density = 1800) {
+  const cv = document.createElement('canvas'); cv.width = Math.max(1, w * DPR); cv.height = Math.max(1, h * DPR);
+  const g = cv.getContext('2d'); g.scale(DPR, DPR);
+  for (const [fx, fy, col] of [[.18, .28, 'rgba(84,70,170,0.12)'], [.82, .78, 'rgba(217,167,90,0.07)'], [.66, .12, 'rgba(121,198,255,0.06)']]) {
+    const R = Math.max(w, h) * .55, gr = g.createRadialGradient(fx * w, fy * h, 0, fx * w, fy * h, R);
+    gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  }
+  const N = Math.round(w * h / density);
+  for (let i = 0; i < N; i++) {
+    const big = Math.random() < .04, r = big ? 1 + Math.random() * .9 : .3 + Math.random() * .6, a = .15 + Math.random() * (big ? .7 : .5);
+    const tint = Math.random(); g.fillStyle = tint < .1 ? `rgba(255,214,170,${a})` : tint < .2 ? `rgba(170,200,255,${a})` : `rgba(236,231,218,${a})`;
+    g.beginPath(); g.arc(Math.random() * w, Math.random() * h, r, 0, TAU); g.fill();
+  }
+  return cv;
+}
+
+/* =====================================================================
+   SCENARIOS
+   ===================================================================== */
+function makeLagrange(m, side) {
+  const r = side / Math.sqrt(3), ang = [Math.PI / 2, Math.PI / 2 + TAU / 3, Math.PI / 2 + 2 * TAU / 3];
+  let p = ang.map(a => [r * Math.cos(a), r * Math.sin(a)]);
+  const M = m[0] + m[1] + m[2], cx = (m[0] * p[0][0] + m[1] * p[1][0] + m[2] * p[2][0]) / M, cy = (m[0] * p[0][1] + m[1] * p[1][1] + m[2] * p[2][1]) / M;
+  p = p.map(q => [q[0] - cx, q[1] - cy]); const w = Math.sqrt(M / side ** 3);
+  return { m, p, v: p.map(q => [-w * q[1], w * q[0]]) };
+}
+function makeRandom() {
+  for (let tries = 0; tries < 200; tries++) {
+    const m = [0, 0, 0].map(() => .6 + Math.random() * 1.4);
+    const p = [0, 0, 0].map(() => { const a = Math.random() * TAU, r = Math.sqrt(Math.random()); return [r * Math.cos(a), r * Math.sin(a)]; });
+    let ok = true; for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) if (Math.hypot(p[i][0] - p[j][0], p[i][1] - p[j][1]) < .45) ok = false;
+    if (!ok) continue;
+    const g = () => { let u = 0; for (let k = 0; k < 6; k++) u += Math.random(); return (u - 3) * .5; };
+    const v = [0, 0, 0].map(() => [g(), g()]);
+    const s = new Sys(m, p, v); centerCOM(s); const e = energy(s), Q = .15 + Math.random() * .35, f = Math.sqrt(Q * -e.U / Math.max(e.K, 1e-9));
+    return { m, p: [0, 1, 2].map(i => [s.x[i], s.y[i]]), v: [0, 1, 2].map(i => [s.vx[i] * f, s.vy[i] * f]) };
+  }
+  return makeLagrange([1, 1, 1], 1.7);
+}
+const shuv = (p1, p2) => ({ m: [1, 1, 1], p: [[-1, 0], [1, 0], [0, 0]], v: [[p1, p2], [p1, p2], [-2 * p1, -2 * p2]] });
+const SHUV = [
+  ['butterfly1', 'Butterfly I', .306893, .125507, 6.2356], ['butterfly2', 'Butterfly II', .392955, .097579, 7.0039],
+  ['butterfly3', 'Butterfly III', .405916, .230163, 13.8657], ['moth1', 'Moth I', .464445, .396060, 14.8939],
+  ['moth2', 'Moth II', .439166, .452968, 28.6703], ['moth3', 'Moth III', .383444, .377364, 25.8406],
+  ['goggles', 'Goggles', .083300, .127889, 10.4668], ['dragonfly', 'Dragonfly', .080584, .588836, 21.2710],
+  ['yinyang1a', 'Yin-Yang Ia', .513938, .304736, 17.3284], ['yinyang1b', 'Yin-Yang Ib', .282699, .327209, 10.9668],
+  ['bumblebee', 'Bumblebee', .184279, .587188, 63.5345], ['yarn', 'Yarn', .559064, .349192, 55.5017]
+];
+const G_CLASSIC = 'Classic solutions', G_SHUV = 'Šuvakov–Dmitrašinović families (2013)', G_CHAOS = 'Chaos & encounters', G_HIER = 'Hierarchical systems';
+const PRESETS = {
+  figure8: { name: 'Figure-eight', group: G_CLASSIC, view: 1.25, speed: 1, T: 6.32591398, who: 'Moore 1993 · proved 2000',
+    desc: 'Three equal masses chase one another around a single figure-eight. Cris Moore found it numerically in 1993; Chenciner and Montgomery proved it exists in 2000. It is one of the rare periodic orbits that is stable.',
+    make: () => ({ m: [1, 1, 1], p: [[.97000436, -.24308753], [-.97000436, .24308753], [0, 0]], v: [[.466203685, .43236573], [.466203685, .43236573], [-.93240737, -.86473146]] }) },
+  lagrange: { name: 'Lagrange triangle', group: G_CLASSIC, view: 1.4, speed: 1.5, T: TAU / Math.sqrt(3 / 1.7320508 ** 3), who: 'Lagrange 1772',
+    desc: 'Lagrange’s 1772 solution: an equilateral triangle that turns rigidly. It works for any masses, but with three equal masses it is unstable. Press Perturb and watch it come apart.',
+    make: () => makeLagrange([1, 1, 1], 1.7320508) },
+  euler: { name: 'Euler collinear', group: G_CLASSIC, view: 1.4, speed: 1.5, T: TAU / Math.sqrt(1.25), who: 'Euler 1767',
+    desc: 'Euler’s 1767 solution: three equal masses on one line, the middle one fixed at the center while the outer pair circles it. Exact on paper, fragile in practice: the line breaks within a few turns.',
+    make: () => ({ m: [1, 1, 1], p: [[-1, 0], [0, 0], [1, 0]], v: [[0, -Math.sqrt(1.25)], [0, 0], [0, Math.sqrt(1.25)]] }) },
+  trojan: { name: 'Sun, Jupiter, Trojan', group: G_HIER, view: 1.5, speed: 2.5, who: 'Lagrange 1772 · Wolf 1906',
+    desc: 'The same equilateral geometry with a star, a planet at 1% of its mass and a tiny asteroid. When one mass dominates (μ below 0.0385) the triangle is stable. Jupiter shares its orbit with thousands of real Trojans.',
+    make: () => makeLagrange([1, .01, 1e-5], 2) },
+  hier: { name: 'Star, planet, moon', group: G_HIER, view: 1.6, speed: 1.5, who: 'Hill 1878',
+    desc: 'A strongly hierarchical triple behaves like two nearly separate two-body problems: the moon orbits the planet, the pair orbits the star. That separation of scales is why the Solar System is predictable.',
+    make: () => { const vp = Math.sqrt(1.02 / 1.2), vm = Math.sqrt(.0204 / .1); return { m: [1, .02, .0004], p: [[0, 0], [1.2, 0], [1.3, 0]], v: [[0, 0], [0, vp], [0, vp + vm]] }; } },
+  pythagorean: { name: 'Pythagorean problem', group: G_CHAOS, view: 4, speed: 2.5, who: 'Burrau 1913 · Szebehely & Peters 1967',
+    desc: 'Masses 3, 4 and 5 start at rest on the corners of a 3-4-5 right triangle. After a long chaotic dance with near-collisions, a tight binary forms and the lightest body is thrown out, around t ≈ 60.',
+    make: () => ({ m: [3, 4, 5], p: [[1, 3], [-2, -1], [1, -1]], v: [[0, 0], [0, 0], [0, 0]] }) },
+  sling: { name: 'Binary meets intruder', group: G_CHAOS, view: 2.6, speed: 2, who: 'Scattering experiment',
+    desc: 'A circular binary meets a third star. Close encounters trade energy between bodies: often one is flung out and the remaining pair tightens. Spacecraft gravity assists use the same exchange.',
+    make: () => ({ m: [1, 1, .8], p: [[-.5, 0], [.5, 0], [-7, .55]], v: [[0, -.7071], [0, .7071], [.9, 0]] }) },
+  random: { name: 'Random bound triple', group: G_CHAOS, view: 1.6, speed: 1.5, who: 'Generated now',
+    desc: 'Random positions, masses and velocities with zero total momentum and negative energy. Most such systems are chaotic and eventually eject one body. Turn on twins to see how quickly prediction fails.',
+    make: makeRandom },
+};
+for (const [k, name, p1, p2, T] of SHUV) PRESETS[k] = { name, group: G_SHUV, view: 1.45, speed: 1.2, T, p1, p2, who: 'Šuvakov & Dmitrašinović 2013',
+  desc: `One of 13 families published in 2013. Equal masses start in a line at −1, +1 and 0, with v₁ = v₂ = (p₁, p₂) and v₃ = −2(p₁, p₂). Period T = ${T}. Like most of them it is unstable, so it unravels after a few laps.`,
+  make: () => shuv(p1, p2) };
+const PALETTES = { ember: ['#ff7a59', '#f3d27a', '#79c6ff'], spectral: ['#ff5d8f', '#8be28b', '#7aa8ff'], moonlight: ['#ece7da', '#a9b4e6', '#d9a75a'], aurora: ['#5ef2c6', '#c48cff', '#ffb35e'] };
+
+/* =====================================================================
+   UI HELPERS
+   ===================================================================== */
+function addRange(host, o) {
+  const row = document.createElement('div'); row.className = 'ctl';
+  row.innerHTML = `<label for="${o.id}"><span class="lbl">${o.dot ? `<span class="dot" data-dot="${o.dot}"></span>` : ''}${o.label}</span><output id="${o.id}-o"></output></label><input type="range" id="${o.id}" min="0" max="1000" step="1">`;
+  host.appendChild(row);
+  const inp = row.querySelector('input'), out = row.querySelector('output'), fmt = o.fmt || (v => v.toFixed(2));
+  const lmin = Math.log(o.min), lmax = Math.log(o.max);
+  const toV = u => { let v = o.log ? Math.exp(lmin + (lmax - lmin) * u / 1000) : o.min + (o.max - o.min) * u / 1000; return o.int ? Math.round(v) : v; };
+  const toU = v => o.log ? 1000 * (Math.log(v) - lmin) / (lmax - lmin) : 1000 * (v - o.min) / (o.max - o.min);
+  const api = { set(v, silent) { inp.value = clamp(toU(v), 0, 1000); out.textContent = fmt(v); if (!silent) o.on(v); }, get: () => toV(+inp.value) };
+  inp.addEventListener('input', () => { const v = toV(+inp.value); out.textContent = fmt(v); o.on(v); });
+  api.set(o.value, true); return api;
+}
+function addToggle(host, o) {
+  const l = document.createElement('label'); l.className = 'tog';
+  l.innerHTML = `<input type="checkbox" id="${o.id}"><span class="sw"></span><span>${o.label}</span>`; host.appendChild(l);
+  const inp = l.querySelector('input'); inp.checked = !!o.value; inp.addEventListener('change', () => o.on(inp.checked));
+  return { set(v, silent) { inp.checked = !!v; if (!silent) o.on(!!v); } };
+}
+function addSelect(host, o) {
+  const d = document.createElement('div'); d.className = 'sel';
+  d.innerHTML = `<label for="${o.id}">${o.label}</label><select id="${o.id}"></select>`; host.appendChild(d);
+  const sel = d.querySelector('select');
+  if (o.groups) { for (const [g, opts] of o.groups) { const og = document.createElement('optgroup'); og.label = g; for (const [v, t] of opts) og.appendChild(new Option(t, v)); sel.appendChild(og); } }
+  else for (const [v, t] of o.options) sel.appendChild(new Option(t, v));
+  sel.value = o.value; sel.addEventListener('change', () => o.on(sel.value));
+  return { set(v) { sel.value = v; } };
+}
+function addButtons(host, list) {
+  const r = document.createElement('div'); r.className = 'btnrow';
+  for (const [label, fn, cls] of list) { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = label; b.addEventListener('click', fn); r.appendChild(b); }
+  host.appendChild(r); return r;
+}
+function addNote(host, text) { const p = document.createElement('p'); p.className = 'note'; p.innerHTML = text; host.appendChild(p); return p; }
+function section(panel, title, open = true) {
+  const d = document.createElement('details'); d.open = open; d.innerHTML = `<summary>${title}</summary><div class="group"></div>`; panel.appendChild(d); return d.querySelector('.group');
+}
+const fexp = v => { const a = Math.abs(v); return a === 0 ? '0' : (a < 1e-3 || a >= 1e4) ? v.toExponential(2) : v.toFixed(a < 1 ? 4 : 3); };
+
+/* =====================================================================
+   MAIN SIMULATOR
+   ===================================================================== */
+const P = { G: 1, eps: 0, dt: .005, eta: .006, adaptive: true, integrator: 'yoshida', speed: 1,
+  trails: true, trailLen: 2400, trailStyle: 'glow', size: 1, glow: true, vel: false, acc: false, com: true, grid: false, stars: true,
+  follow: true, auto: true, palette: 'ember', twins: 0, twinEps: 1e-6, lastH: 0 };
+const VS = .6; // velocity arrow: world units per unit speed
+let main, ghosts = [], mainTr = [], ghostTr = [], presetKey = 'figure8', E0 = 1, running = !reduceMotion;
+let cam = { x: 0, y: 0, s: 200 }, viewR = 1.4, simW = 0, simH = 0, starCv = null, stepsLast = 0;
+let chE = [], chD = [], chartTimer = 0, horizon = null, twinStart = 0, lastPreset = null;
+const simCv = $('#simCv'), sctx = simCv.getContext('2d'), stage = $('#stage');
+const ui = {};
+
+function pal() { return PALETTES[P.palette]; }
+function applyPaletteDots() { const p = pal(); document.querySelectorAll('[data-dot]').forEach(d => d.style.background = p[+d.dataset.dot]); }
+
+function loadPreset(key, keepRandom) {
+  const pr = PRESETS[key]; presetKey = key;
+  const d = (keepRandom && lastPreset && key === 'random') ? lastPreset : pr.make(); lastPreset = d;
+  P.G = 1; ui.G.set(1, true);
+  main = new Sys(d.m, d.p, d.v, P.G, P.eps); centerCOM(main);
+  for (let i = 0; i < 3; i++) ui.m[i].set(main.m[i], true);
+  viewR = pr.view || 1.6; P.speed = pr.speed || 1; ui.speed.set(P.speed, true);
+  $('#hudGroup').textContent = pr.group; $('#hudName').textContent = pr.name; $('#hudDesc').textContent = pr.desc; ui.preset.set(key);
+  cam.x = 0; cam.y = 0; cam.s = Math.min(simW || 600, simH || 600) * .46 / viewR; P.follow = true; ui.follow.set(true, true); P.auto = true; ui.auto.set(true, true);
+  mainTr = [0, 1, 2].map(() => new Trail(P.trailLen));
+  resetDerived();
+}
+function resetDerived() {
+  E0 = energy(main).E; chE = []; chD = []; horizon = null;
+  for (const t of mainTr) t.clear();
+  spawnGhosts();
+}
+function spawnGhosts() {
+  ghosts = []; ghostTr = []; twinStart = main.t; horizon = null; chD = [];
+  const cap = Math.min(P.trailLen, 900);
+  for (let k = 0; k < P.twins; k++) { const g = main.clone(), th = TAU * k / P.twins + .4;
+    g.x[0] += P.twinEps * Math.cos(th); g.y[0] += P.twinEps * Math.sin(th); ghosts.push(g); ghostTr.push([0, 1, 2].map(() => new Trail(cap))); }
+}
+function syncParams() { for (const s of [main, ...ghosts]) { s.G = P.G; s.e2 = P.eps * P.eps; } }
+function setMass(i, v) { for (const s of [main, ...ghosts]) s.m[i] = v; E0 = energy(main).E; chE = []; }
+
+function buildSimPanel() {
+  const panel = $('#panel');
+  let g = section(panel, 'Scenario');
+  const groups = {}; for (const [k, p] of Object.entries(PRESETS)) (groups[p.group] = groups[p.group] || []).push([k, p.name]);
+  ui.preset = addSelect(g, { id: 'presetSel', label: 'Initial conditions', groups: [G_CLASSIC, G_SHUV, G_CHAOS, G_HIER].map(n => [n, groups[n]]), value: presetKey, on: v => { loadPreset(v); setRunning(true); } });
+  addButtons(g, [['Reset', () => loadPreset(presetKey, true)], ['New random', () => { loadPreset('random'); setRunning(true); }], ['Perturb', perturb]]);
+  addButtons(g, [['Reverse time', reverseTime], ['Recenter mass', () => { centerCOM(main); for (const s of ghosts) centerCOM(s); resetDerived(); }]]);
+  addNote(g, '<b>Reverse time</b> flips every velocity. Exact arithmetic would retrace the path; chaotic orbits retrace only briefly before rounding errors win.');
+
+  g = section(panel, 'Playback & integrator');
+  ui.speed = addRange(g, { id: 'spd', label: 'Speed (time units / s)', min: .05, max: 20, log: true, value: P.speed, fmt: v => v.toFixed(2) + '×', on: v => P.speed = v });
+  addSelect(g, { id: 'integ', label: 'Integrator', options: [['yoshida', 'Yoshida 4th-order (symplectic)'], ['rk4', 'Runge–Kutta 4'], ['leapfrog', 'Leapfrog / Verlet (symplectic)'], ['euler', 'Forward Euler (watch it drift)']], value: P.integrator, on: v => { P.integrator = v; E0 = energy(main).E; chE = []; } });
+  ui.adapt = addToggle(g, { id: 'adapt', label: 'Adaptive step near close encounters', value: P.adaptive, on: v => P.adaptive = v });
+  addRange(g, { id: 'dtmax', label: 'Max step Δt', min: 1e-4, max: .05, log: true, value: P.dt, fmt: v => v.toExponential(1), on: v => P.dt = v });
+  addRange(g, { id: 'eta', label: 'Accuracy factor η', min: 5e-4, max: .1, log: true, value: P.eta, fmt: v => v.toExponential(1), on: v => P.eta = v });
+  addNote(g, 'Adaptive stepping shrinks h to η × the shortest free-fall or crossing time between any pair.');
+
+  g = section(panel, 'Physics');
+  ui.m = [0, 1, 2].map(i => addRange(g, { id: 'm' + i, label: 'Mass ' + (i + 1), dot: i, min: 1e-5, max: 10, log: true, value: 1, fmt: v => v < .01 ? v.toExponential(1) : v.toFixed(3), on: v => setMass(i, v) }));
+  ui.G = addRange(g, { id: 'Gc', label: 'Gravitational constant G', min: .1, max: 5, log: true, value: 1, fmt: v => v.toFixed(2), on: v => { P.G = v; syncParams(); E0 = energy(main).E; chE = []; } });
+  addRange(g, { id: 'soft', label: 'Softening ε', min: 0, max: .2, value: P.eps, fmt: v => v.toFixed(3), on: v => { P.eps = v; syncParams(); E0 = energy(main).E; chE = []; } });
+  addNote(g, 'Softening replaces 1/r² with r/(r²+ε²)^{3/2}, taming close encounters at the cost of accuracy.');
+
+  g = section(panel, 'Chaos lab: twins');
+  addRange(g, { id: 'twins', label: 'Perturbed twins', min: 0, max: 24, int: true, value: P.twins, fmt: v => String(v), on: v => { P.twins = v; spawnGhosts(); } });
+  addRange(g, { id: 'teps', label: 'Initial offset δ', min: 1e-12, max: 1e-2, log: true, value: P.twinEps, fmt: v => v.toExponential(0), on: v => { P.twinEps = v; spawnGhosts(); } });
+  addButtons(g, [['Respawn twins from now', spawnGhosts]]);
+  addNote(g, 'Each twin starts with body 1 shifted by δ in a different direction. In a chaotic system the gap grows exponentially until the twins share nothing.');
+
+  g = section(panel, 'Display', true);
+  ui.trails = addToggle(g, { id: 'trl', label: 'Trails', value: P.trails, on: v => P.trails = v });
+  addRange(g, { id: 'trlen', label: 'Trail length', min: 100, max: 8000, log: true, int: true, value: P.trailLen, fmt: v => v + ' pts', on: v => { P.trailLen = v; for (const t of mainTr) t.resize(v); } });
+  addSelect(g, { id: 'trsty', label: 'Trail style', options: [['glow', 'Glowing filament'], ['fade', 'Tapered fade'], ['solid', 'Solid ink']], value: P.trailStyle, on: v => P.trailStyle = v });
+  addSelect(g, { id: 'palette', label: 'Palette', options: [['ember', 'Ember, gold, glacier'], ['spectral', 'Spectral'], ['moonlight', 'Moonlight'], ['aurora', 'Aurora']], value: P.palette, on: v => { P.palette = v; applyPaletteDots(); } });
+  addRange(g, { id: 'bsize', label: 'Body size', min: .4, max: 3, value: P.size, fmt: v => v.toFixed(1) + '×', on: v => P.size = v });
+  const tg = document.createElement('div'); tg.className = 'togs'; g.appendChild(tg);
+  addToggle(tg, { id: 'glw', label: 'Glow', value: P.glow, on: v => P.glow = v });
+  addToggle(tg, { id: 'stars', label: 'Starfield', value: P.stars, on: v => P.stars = v });
+  addToggle(tg, { id: 'vel', label: 'Velocity', value: P.vel, on: v => P.vel = v });
+  addToggle(tg, { id: 'acc', label: 'Acceleration', value: P.acc, on: v => P.acc = v });
+  addToggle(tg, { id: 'com', label: 'Center of mass', value: P.com, on: v => P.com = v });
+  addToggle(tg, { id: 'grid', label: 'Grid', value: P.grid, on: v => P.grid = v });
+  ui.follow = addToggle(tg, { id: 'fol', label: 'Follow mass', value: P.follow, on: v => P.follow = v });
+  ui.auto = addToggle(tg, { id: 'auto', label: 'Auto-zoom', value: P.auto, on: v => P.auto = v });
+  applyPaletteDots();
+}
+function perturb() { const a = Math.random() * TAU; main.vx[0] += 1e-3 * Math.cos(a); main.vy[0] += 1e-3 * Math.sin(a); resetDerived(); setRunning(true); }
+function reverseTime() { for (const s of [main, ...ghosts]) for (let i = 0; i < 3; i++) { s.vx[i] = -s.vx[i]; s.vy[i] = -s.vy[i]; } }
+
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
+function setRunning(v) { running = v; $('#bPlay').innerHTML = v ? ICON_PAUSE : ICON_PLAY; }
+
+function stepSim(dtSim) {
+  const minD = 1.1 / cam.s, md2 = minD * minD, sdt = Math.max(P.speed / 150, 2e-4);
+  const target = main.t + dtSim;
+  const cb = P.trails ? s => sampleTrails(s, mainTr, md2, sdt) : null;
+  stepsLast = advance(main, target, P, cb, 60000);
+  ghosts.forEach((g, k) => advance(g, main.t, P, P.trails ? s => sampleTrails(s, ghostTr[k], md2 * 9, sdt * 2) : null, 25000));
+}
+function simTick(dtR) {
+  if (running) stepSim(P.speed * dtR);
+  // camera
+  if (!drag || drag.type !== 'body') {
+    if (P.follow) { const c = com(main); cam.x += (c.x - cam.x) * .15; cam.y += (c.y - cam.y) * .15; }
+    if (P.auto) { let R = 0; for (let i = 0; i < 3; i++) R = Math.max(R, Math.hypot(main.x[i] - cam.x, main.y[i] - cam.y));
+      const Rt = clamp(R * 1.18, viewR * .75, viewR * 7), ts = Math.min(simW, simH) * .47 / Rt;
+      cam.s += (ts - cam.s) * (ts < cam.s ? .08 : .015); }
+  }
+  chartTimer += dtR;
+  if (chartTimer > .08 && running) { chartTimer = 0; recordCharts(); }
+}
+function recordCharts() {
+  const E = energy(main).E, rel = Math.abs((E - E0) / (E0 || 1));
+  chE.push([main.t, Math.log10(Math.max(rel, 1e-16))]); if (chE.length > 600) chE = chE.filter((_, i) => i % 2 === 0);
+  if (ghosts.length) {
+    let sum = 0;
+    for (const g of ghosts) { let d2 = 0; for (let i = 0; i < 3; i++) { const a = g.x[i] - main.x[i], b = g.y[i] - main.y[i], c = g.vx[i] - main.vx[i], e = g.vy[i] - main.vy[i]; d2 += a * a + b * b + c * c + e * e; } sum += Math.log10(Math.max(Math.sqrt(d2), 1e-18)); }
+    const ld = sum / ghosts.length; chD.push([main.t - twinStart, ld]); if (chD.length > 600) chD = chD.filter((_, i) => i % 2 === 0);
+    if (horizon === null && Math.pow(10, ld) > .1 * rmsRadius(main)) horizon = main.t - twinStart;
+  }
+}
+function W2S(x, y) { return [simW / 2 + (x - cam.x) * cam.s, simH / 2 - (y - cam.y) * cam.s]; }
+function S2W(X, Y) { return [cam.x + (X - simW / 2) / cam.s, cam.y - (Y - simH / 2) / cam.s]; }
+function bodyR(i) { return clamp(6.5 * P.size * Math.cbrt(main.m[i]), 2.2, 30); }
+function drawGrid(c) {
+  const target = 90 / cam.s, p = Math.pow(10, Math.floor(Math.log10(target))), step = target / p < 2 ? p * 2 : target / p < 5 ? p * 5 : p * 10;
+  const [x0, y1] = S2W(0, 0), [x1, y0] = S2W(simW, simH);
+  c.strokeStyle = rgba(COL.fg, .055); c.lineWidth = 1; c.beginPath();
+  for (let x = Math.ceil(x0 / step) * step; x <= x1; x += step) { const X = W2S(x, 0)[0]; c.moveTo(X, 0); c.lineTo(X, simH); }
+  for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) { const Y = W2S(0, y)[1]; c.moveTo(0, Y); c.lineTo(simW, Y); }
+  c.stroke();
+  c.fillStyle = COL.dim; c.font = '10px ' + cssv('--mono'); c.fillText('grid ' + +step.toPrecision(2) + ' units', 18, simH - 40);
+}
+function drawSim() {
+  const c = sctx; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  c.fillStyle = COL.ink; c.fillRect(0, 0, simW, simH);
+  if (P.stars && starCv) c.drawImage(starCv, 0, 0, simW, simH);
+  if (P.grid) drawGrid(c);
+  const p = pal(), V = { cx: simW / 2, cy: simH / 2, s: cam.s, ox: cam.x, oy: cam.y };
+  if (ghosts.length) {
+    const a = clamp(2.4 / ghosts.length, .08, .35);
+    if (P.trails) ghosts.forEach((g, k) => { for (let i = 0; i < 3; i++) strokeTrail(c, ghostTr[k][i], p[i], a, 1, 'fade', V); });
+    for (const g of ghosts) for (let i = 0; i < 3; i++) { const [X, Y] = W2S(g.x[i], g.y[i]); c.globalAlpha = .55; c.fillStyle = p[i]; c.beginPath(); c.arc(X, Y, 2.2, 0, TAU); c.fill(); }
+    c.globalAlpha = 1;
+  }
+  if (P.trails) for (let i = 0; i < 3; i++) strokeTrail(c, mainTr[i], p[i], .95, 1.7, P.trailStyle, V);
+  if (P.com) { const m = com(main), [X, Y] = W2S(m.x, m.y); c.strokeStyle = rgba(COL.brass, .8); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(X - 7, Y); c.lineTo(X + 7, Y); c.moveTo(X, Y - 7); c.lineTo(X, Y + 7); c.stroke(); c.beginPath(); c.arc(X, Y, 3.5, 0, TAU); c.stroke(); }
+  if (P.acc) { acc(main, main.x, main.y, main.ax, main.ay);
+    for (let i = 0; i < 3; i++) { const [X, Y] = W2S(main.x[i], main.y[i]); const k = .25 * cam.s; arrow(c, X, Y, X + main.ax[i] * k, Y - main.ay[i] * k, rgba(COL.fg, .7), 1.3); } }
+  for (let i = 0; i < 3; i++) { const [X, Y] = W2S(main.x[i], main.y[i]); drawBody(c, X, Y, bodyR(i), p[i], P.glow); }
+  const showHandles = !running;
+  if (P.vel || showHandles) for (let i = 0; i < 3; i++) {
+    const [X, Y] = W2S(main.x[i], main.y[i]), [X2, Y2] = W2S(main.x[i] + main.vx[i] * VS, main.y[i] + main.vy[i] * VS);
+    arrow(c, X, Y, X2, Y2, P.vel ? p[i] : rgba(p[i], .6), 1.6);
+    if (showHandles) { c.strokeStyle = p[i]; c.lineWidth = 1.5; c.beginPath(); c.arc(X2, Y2, 6, 0, TAU); c.stroke(); }
+  }
+  const pr = PRESETS[presetKey];
+  let clk = `t = ${main.t.toFixed(2)}`; if (pr.T && presetKey !== 'random') clk += ` <span>· ${(main.t / pr.T).toFixed(2)} periods</span>`;
+  if (!running) clk += ' <span>· paused</span>';
+  $('#clock').innerHTML = clk;
+}
+function drawChart(cv, data, color, empty, xlabel) {
+  const w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  if (cv.width !== Math.round(w * DPR)) { cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); }
+  const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+  c.font = '10px ' + cssv('--mono'); c.textBaseline = 'middle';
+  if (data.length < 2) { c.fillStyle = COL.dim; c.textAlign = 'center'; c.fillText(empty, w / 2, h / 2); c.textAlign = 'left'; return; }
+  let lo = Infinity, hi = -Infinity; for (const d of data) { if (d[1] < lo) lo = d[1]; if (d[1] > hi) hi = d[1]; }
+  lo = Math.floor(lo); hi = Math.ceil(hi); if (hi - lo < 2) hi = lo + 2;
+  const L = 40, R = 10, T = 6, B = 18, t0 = data[0][0], t1 = data[data.length - 1][0] || 1, tw = (t1 - t0) || 1;
+  const X = t => L + (t - t0) / tw * (w - L - R), Y = v => T + (hi - v) / (hi - lo) * (h - T - B);
+  const st = (hi - lo) > 10 ? 3 : (hi - lo) > 5 ? 2 : 1;
+  c.strokeStyle = rgba(COL.fg, .07); c.lineWidth = 1; c.fillStyle = COL.dim;
+  for (let v = lo; v <= hi; v += st) { const y = Math.round(Y(v)) + .5; c.beginPath(); c.moveTo(L, y); c.lineTo(w - R, y); c.stroke(); c.fillText('1e' + v, 4, y); }
+  c.textAlign = 'right'; c.fillText(xlabel + ' = ' + t1.toFixed(1), w - R, h - 7); c.textAlign = 'left';
+  const gr = c.createLinearGradient(0, T, 0, h - B); gr.addColorStop(0, rgba(color, .28)); gr.addColorStop(1, rgba(color, 0));
+  c.beginPath(); c.moveTo(X(data[0][0]), h - B); for (const d of data) c.lineTo(X(d[0]), Y(d[1])); c.lineTo(X(t1), h - B); c.closePath(); c.fillStyle = gr; c.fill();
+  c.beginPath(); data.forEach((d, i) => i ? c.lineTo(X(d[0]), Y(d[1])) : c.moveTo(X(d[0]), Y(d[1]))); c.strokeStyle = color; c.lineWidth = 1.6; c.stroke();
+  const e = data[data.length - 1]; c.fillStyle = color; c.beginPath(); c.arc(X(e[0]), Y(e[1]), 3, 0, TAU); c.fill();
+}
+let roTick = 0;
+function updateReadouts() {
+  const e = energy(main), rel = Math.abs((e.E - E0) / (E0 || 1));
+  $('#rT').textContent = main.t.toFixed(3); $('#rE').textContent = fexp(e.E);
+  const rd = $('#rdE'); rd.textContent = rel.toExponential(2); rd.className = 'v ' + (rel < 1e-6 ? 'good' : rel < 1e-3 ? 'warn' : 'bad');
+  $('#rL').textContent = fexp(angmom(main)); $('#rH').textContent = (P.lastH || P.dt).toExponential(2); $('#rS').textContent = running ? stepsLast : '—';
+  $('#rP').textContent = !ghosts.length ? 'twins off' : horizon === null ? 'together, Δt ' + (main.t - twinStart).toFixed(1) : 'Δt = ' + horizon.toFixed(2);
+  drawChart($('#chE'), chE, COL.brass, 'Collecting samples…', 't');
+  drawChart($('#chD'), chD, COL.b3, ghosts.length ? 'Collecting samples…' : 'Add twins in the Chaos lab to measure divergence', 'Δt');
+}
+
+/* pointer interaction */
+let drag = null;
+function pickBody(X, Y) { for (let i = 2; i >= 0; i--) { const [bx, by] = W2S(main.x[i], main.y[i]); if (Math.hypot(X - bx, Y - by) < bodyR(i) + 9) return i; } return -1; }
+function pickHandle(X, Y) { if (running) return -1; for (let i = 2; i >= 0; i--) { const [hx, hy] = W2S(main.x[i] + main.vx[i] * VS, main.y[i] + main.vy[i] * VS); if (Math.hypot(X - hx, Y - hy) < 11) return i; } return -1; }
+function localXY(e) { const r = simCv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+simCv.addEventListener('pointerdown', e => {
+  const [X, Y] = localXY(e); simCv.setPointerCapture(e.pointerId);
+  let i = pickHandle(X, Y);
+  if (i >= 0) { drag = { type: 'vel', i, moved: false }; }
+  else if ((i = pickBody(X, Y)) >= 0) { setRunning(false); drag = { type: 'body', i, moved: false }; }
+  else { drag = { type: 'pan', X, Y, cx: cam.x, cy: cam.y }; simCv.classList.add('grabbing'); }
+});
+simCv.addEventListener('pointermove', e => {
+  const [X, Y] = localXY(e);
+  if (!drag) { simCv.style.cursor = (pickHandle(X, Y) >= 0 || pickBody(X, Y) >= 0) ? 'pointer' : ''; return; }
+  const [wx, wy] = S2W(X, Y);
+  if (drag.type === 'body') { main.x[drag.i] = wx; main.y[drag.i] = wy; drag.moved = true; }
+  else if (drag.type === 'vel') { main.vx[drag.i] = (wx - main.x[drag.i]) / VS; main.vy[drag.i] = (wy - main.y[drag.i]) / VS; drag.moved = true; }
+  else { if (Math.hypot(X - drag.X, Y - drag.Y) > 3 && P.follow) { P.follow = false; ui.follow.set(false, true); }
+    if (!P.follow) { cam.x = drag.cx - (X - drag.X) / cam.s; cam.y = drag.cy + (Y - drag.Y) / cam.s; } }
+});
+function endDrag() { if (drag && drag.moved) { for (const t of mainTr) t.clear(); resetDerived(); } drag = null; simCv.classList.remove('grabbing'); }
+simCv.addEventListener('pointerup', endDrag); simCv.addEventListener('pointercancel', endDrag);
+simCv.addEventListener('wheel', e => {
+  e.preventDefault(); const [X, Y] = localXY(e), f = Math.exp(-e.deltaY * .0015);
+  const [wx, wy] = S2W(X, Y); cam.s = clamp(cam.s * f, 2, 1e6);
+  if (!P.follow) { cam.x = wx - (X - simW / 2) / cam.s; cam.y = wy + (Y - simH / 2) / cam.s; }
+  P.auto = false; ui.auto.set(false, true);
+}, { passive: false });
+function zoomBy(f) { cam.s = clamp(cam.s * f, 2, 1e6); P.auto = false; ui.auto.set(false, true); }
+$('#bPlay').addEventListener('click', () => setRunning(!running));
+$('#bStep').addEventListener('click', () => { setRunning(false); stepSim(.05 * P.speed); recordCharts(); });
+$('#bReset').addEventListener('click', () => loadPreset(presetKey, true));
+$('#bRev').addEventListener('click', reverseTime);
+$('#bZin').addEventListener('click', () => zoomBy(1.3));
+$('#bZout').addEventListener('click', () => zoomBy(1 / 1.3));
+$('#bFit').addEventListener('click', () => { P.follow = true; P.auto = true; ui.follow.set(true, true); ui.auto.set(true, true); });
+$('#bFull').addEventListener('click', () => { try { const p = document.fullscreenElement ? document.exitFullscreen() : stage.requestFullscreen(); p && p.catch && p.catch(() => {}); } catch (_) {} });
+document.addEventListener('keydown', e => {
+  if (activeTab !== 'sim' || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === ' ') { e.preventDefault(); setRunning(!running); }
+  else if (e.key === 'r' || e.key === 'R') loadPreset(presetKey, true);
+  else if (e.key === 'f' || e.key === 'F') $('#bFit').click();
+  else if (e.key === 'v' || e.key === 'V') reverseTime();
+  else if (e.key === '.') $('#bStep').click();
+});
+
+/* =====================================================================
+   LAGRANGE / RESTRICTED PROBLEM
+   ===================================================================== */
+const LG = { mu: .01215, speed: 2, inertial: false, forbidden: true, contours: true, trails: true, t: 0, parts: [], sel: -1, view: 1.55, field: null, fkey: '', w: 0, h: 0, Lp: [], dragging: null };
+const lagCv = $('#lagCv'), lctx = lagCv.getContext('2d'), lui = {};
+function Om(x, y, mu) { const a = x + mu, b = x - 1 + mu; return .5 * (x * x + y * y) + (1 - mu) / Math.sqrt(a * a + y * y) + mu / Math.sqrt(b * b + y * y); }
+function lagDeriv(s, mu) {
+  const x = s[0], y = s[1], a = x + mu, b = x - 1 + mu;
+  const r1 = Math.sqrt(a * a + y * y), r2 = Math.sqrt(b * b + y * y), k1 = (1 - mu) / (r1 * r1 * r1), k2 = mu / (r2 * r2 * r2);
+  return [s[2], s[3], 2 * s[3] + x - k1 * a - k2 * b, -2 * s[2] + y - k1 * y - k2 * y];
+}
+function lagStep(p, h, mu) {
+  const s0 = [p.x, p.y, p.vx, p.vy], k1 = lagDeriv(s0, mu);
+  const k2 = lagDeriv(s0.map((v, i) => v + .5 * h * k1[i]), mu), k3 = lagDeriv(s0.map((v, i) => v + .5 * h * k2[i]), mu), k4 = lagDeriv(s0.map((v, i) => v + h * k3[i]), mu);
+  p.x += h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]); p.y += h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+  p.vx += h / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]); p.vy += h / 6 * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]);
+}
+function lPoints(mu) {
+  const f = x => { const a = x + mu, b = x - 1 + mu; return x - (1 - mu) * a / Math.abs(a) ** 3 - mu * b / Math.abs(b) ** 3; };
+  const bis = (a, b) => { let fa = f(a); for (let k = 0; k < 120; k++) { const m = (a + b) / 2, fm = f(m); if (Math.sign(fm) === Math.sign(fa)) { a = m; fa = fm; } else b = m; } return (a + b) / 2; };
+  const pts = [['L1', bis(-mu + 1e-7, 1 - mu - 1e-7), 0], ['L2', bis(1 - mu + 1e-7, 2.5), 0], ['L3', bis(-2.5, -mu - 1e-7), 0], ['L4', .5 - mu, Math.sqrt(3) / 2], ['L5', .5 - mu, -Math.sqrt(3) / 2]];
+  return pts.map(([n, x, y]) => ({ n, x, y, C: 2 * Om(x, y, mu) }));
+}
+const PCOL = ['#f0cf8e', '#79c6ff', '#ff7a59', '#9be3b4', '#c9a2ff', '#f3d27a'];
+let pcolIdx = 0;
+function addParticle(x, y, vx, vy, select = true, trailCap = 2500) {
+  const p = { x, y, vx, vy, t: LG.t, alive: true, color: PCOL[pcolIdx++ % PCOL.length], tr: new Trail(trailCap), ti: new Trail(trailCap) };
+  p.C = 2 * Om(x, y, LG.mu) - (vx * vx + vy * vy);
+  LG.parts.push(p); if (LG.parts.length > 120) LG.parts.shift();
+  if (select) LG.sel = LG.parts.length - 1;
+  return p;
+}
+function lagStageInfo() { const s = Math.min(LG.w, LG.h) / (2 * LG.view), th = LG.inertial ? LG.t : 0; return { s, th, c: Math.cos(th), sn: Math.sin(th) }; }
+function lToS(x, y, I) { const X = x * I.c - y * I.sn, Y = x * I.sn + y * I.c; return [LG.w / 2 + X * I.s, LG.h / 2 - Y * I.s]; }
+function sToRot(X, Y, I) { const xi = (X - LG.w / 2) / I.s, yi = -(Y - LG.h / 2) / I.s; return [xi * I.c + yi * I.sn, -xi * I.sn + yi * I.c]; }
+const RAMP = [[0, 10, 12, 24], [.22, 24, 29, 70], [.45, 56, 42, 100], [.66, 132, 86, 62], [.82, 217, 167, 90], [1, 246, 230, 191]];
+function ramp(t) { for (let i = 1; i < RAMP.length; i++) if (t <= RAMP[i][0]) { const a = RAMP[i - 1], b = RAMP[i], f = (t - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f]; } return RAMP[RAMP.length - 1].slice(1); }
+function buildField() {
+  const I = lagStageInfo(), R = Math.hypot(LG.w, LG.h) / (2 * I.s), N = 300, mu = LG.mu;
+  const Csel = (LG.forbidden && LG.parts[LG.sel] && LG.parts[LG.sel].alive) ? LG.parts[LG.sel].C : null;
+  const key = [N, R.toFixed(4), mu, Csel, LG.contours].join('|'); if (key === LG.fkey && LG.field) return;
+  LG.fkey = key;
+  const cv = LG.field || document.createElement('canvas'); cv.width = N; cv.height = N; const g = cv.getContext('2d'), img = g.createImageData(N, N), d = img.data;
+  const C = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = -R + (i + .5) / N * 2 * R, y = R - (j + .5) / N * 2 * R; C[j * N + i] = 2 * Om(x, y, mu); }
+  const cmin = 2.94, cmax = 4.5, band = .045;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const k = j * N + i, c = C[k], t = Math.pow(clamp((c - cmin) / (cmax - cmin), 0, 1), .75);
+    let [r, gg, b] = ramp(t);
+    if (LG.contours && c < 4.4 && i < N - 1 && j < N - 1) { const q = Math.floor(c / band); if (q !== Math.floor(C[k + 1] / band) || q !== Math.floor(C[k + N] / band)) { r += 34; gg += 30; b += 26; } }
+    if (Csel !== null && c < Csel) { r = r * .3 + 12; gg = gg * .3 + 10; b = b * .3 + 20; if ((i + j) % 6 === 0) { r += 70; gg += 50; b += 80; } }
+    const o = k * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0); LG.field = cv; LG.fieldR = R;
+}
+function lagTick(dtR) {
+  const mu = LG.mu, target = LG.t + LG.speed * dtR;
+  for (const p of LG.parts) {
+    if (!p.alive) continue; let guard = 0;
+    while (p.t < target && guard++ < 4000) {
+      const a = p.x + mu, b = p.x - 1 + mu, r1 = Math.hypot(a, p.y), r2 = Math.hypot(b, p.y);
+      if (r1 < .03 || r2 < Math.max(.006, .05 * Math.cbrt(mu)) || Math.hypot(p.x, p.y) > 5) { p.alive = false; break; }
+      const h = Math.min(clamp(.03 * Math.min(r1, r2) ** 1.5, 2e-5, .008), target - p.t);
+      lagStep(p, h, mu); p.t += h;
+      const dx = p.x - p.tr.lx, dy = p.y - p.tr.ly;
+      if (!(dx * dx + dy * dy < 1e-5) || p.t - p.tr.lt > .03) { p.tr.push(p.x, p.y, p.t); const c = Math.cos(p.t), s = Math.sin(p.t); p.ti.push(p.x * c - p.y * s, p.x * s + p.y * c, p.t); }
+    }
+  }
+  LG.t = target;
+}
+function lagDraw() {
+  const c = lctx, w = LG.w, h = LG.h; if (!w) return;
+  c.setTransform(DPR, 0, 0, DPR, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  c.fillStyle = COL.ink; c.fillRect(0, 0, w, h);
+  buildField(); const I = lagStageInfo(), mu = LG.mu;
+  c.save(); c.translate(w / 2, h / 2); c.rotate(-I.th); c.imageSmoothingEnabled = true; const S = LG.fieldR * I.s; c.drawImage(LG.field, -S, -S, 2 * S, 2 * S); c.restore();
+  if (LG.inertial) { c.strokeStyle = rgba(COL.fg, .14); c.setLineDash([3, 5]); c.lineWidth = 1;
+    c.beginPath(); c.arc(w / 2, h / 2, (1 - mu) * I.s, 0, TAU); c.stroke(); c.beginPath(); c.arc(w / 2, h / 2, Math.max(mu * I.s, 1), 0, TAU); c.stroke(); c.setLineDash([]); }
+  // trails
+  for (let k = 0; k < LG.parts.length; k++) { const p = LG.parts[k]; if (!LG.trails) continue;
+    const V = LG.inertial ? { cx: w / 2, cy: h / 2, s: I.s, ox: 0, oy: 0 } : { cx: w / 2, cy: h / 2, s: I.s, ox: 0, oy: 0 };
+    strokeTrail(c, LG.inertial ? p.ti : p.tr, p.color, k === LG.sel ? .95 : .6, k === LG.sel ? 1.6 : 1.1, 'fade', V); }
+  // L points
+  c.font = '11px ' + cssv('--mono'); c.textBaseline = 'middle';
+  for (const L of LG.Lp) { const [X, Y] = lToS(L.x, L.y, I); c.strokeStyle = COL.fg; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(X, Y - 5); c.lineTo(X + 5, Y); c.lineTo(X, Y + 5); c.lineTo(X - 5, Y); c.closePath(); c.stroke();
+    c.fillStyle = COL.fg; c.fillText(L.n, X + 8, Y - 8); }
+  // primaries
+  const [X1, Y1] = lToS(-mu, 0, I), [X2, Y2] = lToS(1 - mu, 0, I);
+  drawBody(c, X1, Y1, 4 + 9 * Math.cbrt(1 - mu), '#f0cf8e', true);
+  drawBody(c, X2, Y2, 2.5 + 11 * Math.cbrt(mu), '#79c6ff', true);
+  for (let k = 0; k < LG.parts.length; k++) { const p = LG.parts[k], [X, Y] = lToS(p.x, p.y, I);
+    c.globalAlpha = p.alive ? 1 : .35; c.fillStyle = p.color; c.beginPath(); c.arc(X, Y, k === LG.sel ? 4 : 2.6, 0, TAU); c.fill();
+    if (k === LG.sel && p.alive) { c.strokeStyle = p.color; c.lineWidth = 1; c.beginPath(); c.arc(X, Y, 8, 0, TAU); c.stroke(); } }
+  c.globalAlpha = 1;
+  if (LG.dragging && LG.dragging.moved) { const d = LG.dragging; arrow(c, d.X0, d.Y0, d.X, d.Y, COL.brass, 1.8); c.fillStyle = COL.brass; c.beginPath(); c.arc(d.X0, d.Y0, 4, 0, TAU); c.fill(); }
+  const sp = LG.parts[LG.sel];
+  $('#lagClock').innerHTML = `t = ${LG.t.toFixed(2)} <span>· ${(LG.t / TAU).toFixed(2)} orbits · ${LG.inertial ? 'inertial' : 'rotating'} frame</span>` + (sp ? `<br><span>selected C<sub>J</sub> = ${sp.C.toFixed(4)}${sp.alive ? '' : ' · collided or escaped'}</span>` : '');
+}
+function lagMuChanged() {
+  LG.Lp = lPoints(LG.mu); LG.fkey = '';
+  const rows = LG.Lp.map(L => `<tr><td>${L.n}</td><td>${L.x.toFixed(4)}</td><td>${L.y.toFixed(4)}</td><td>${L.C.toFixed(4)}</td></tr>`).join('');
+  $('#ltab').innerHTML = `<table class="ltable"><thead><tr><th>Point</th><th>x</th><th>y</th><th>C<sub>J</sub></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const st = LG.mu < .03852;
+  $('#lstab').innerHTML = `<span class="chip ${st ? 'ok' : 'no'}">L4 / L5 ${st ? 'stable' : 'unstable'}</span>`;
+  for (const p of LG.parts) p.C = 2 * Om(p.x, p.y, LG.mu) - (p.vx * p.vx + p.vy * p.vy);
+}
+function lagSetMu(mu) { LG.mu = mu; lui.mu.set(mu, true); lagMuChanged(); }
+const LPRE = {
+  tadpole() { lagSetMu(.000954); LG.parts = []; const a = 72 * Math.PI / 180; addParticle(-LG.mu + Math.cos(a), Math.sin(a), 0, 0); LG.speed = 6; lui.speed.set(6, true); },
+  horseshoe() { lagSetMu(.000954); LG.parts = []; const r = 1.008; addParticle(-r, 0, 0, r - 1 / Math.sqrt(r)); LG.speed = 10; lui.speed.set(10, true); },
+  l1() { lagSetMu(.01215); LG.parts = []; const L1 = LG.Lp[0], x = L1.x - .035, v = Math.sqrt(Math.max(0, 2 * Om(x, 0, LG.mu) - (L1.C - .012))); addParticle(x, 0, 0, -v); LG.speed = 2; lui.speed.set(2, true); },
+  swarm() { LG.parts = []; for (let k = 0; k < 48; k++) { const r = .35 + Math.random() * 1.45, a = Math.random() * TAU, x = r * Math.cos(a), y = r * Math.sin(a);
+      if (Math.hypot(x - 1 + LG.mu, y) < .12) continue; const vt = 1 / Math.sqrt(r) - r; addParticle(x, y, -vt * Math.sin(a), vt * Math.cos(a), false, 900); } LG.sel = -1; LG.speed = 3; lui.speed.set(3, true); },
+};
+function buildLagPanel() {
+  const panel = $('#lagPanel');
+  let g = section(panel, 'Mass ratio');
+  lui.mu = addRange(g, { id: 'mu', label: 'μ = m₂ / (m₁ + m₂)', min: 1e-4, max: .5, log: true, value: LG.mu, fmt: v => v.toPrecision(3), on: v => { LG.mu = v; lagMuChanged(); } });
+  addSelect(g, { id: 'muPre', label: 'Real pairs', options: [['', 'Choose a pair…'], ['0.000003', 'Sun–Earth (3.0e-6)'], ['0.000954', 'Sun–Jupiter (9.5e-4)'], ['0.01215', 'Earth–Moon (0.0122)'], ['0.109', 'Pluto–Charon (0.109)'], ['0.5', 'Equal-mass binary (0.5)']], value: '', on: v => { if (v) { const m = Math.max(+v, 1e-4); lagSetMu(m); } } });
+  const st = document.createElement('div'); st.id = 'lstab'; g.appendChild(st);
+  addNote(g, 'Gascheau and Routh showed the triangular points are stable only when μ is below about 0.0385. Earth–Moon and Sun–Jupiter qualify; Pluto–Charon does not.');
+  g = section(panel, 'Experiments');
+  addButtons(g, [['Trojan tadpole', LPRE.tadpole], ['Horseshoe', LPRE.horseshoe]]);
+  addButtons(g, [['Slip through L1', LPRE.l1], ['Swarm of 48', LPRE.swarm]]);
+  addButtons(g, [['Clear particles', () => { LG.parts = []; LG.sel = -1; LG.fkey = ''; }]]);
+  addNote(g, 'Click the map to place a particle at rest in the rotating frame. Drag to give it a velocity.');
+  g = section(panel, 'View');
+  lui.speed = addRange(g, { id: 'lspd', label: 'Speed', min: .2, max: 20, log: true, value: LG.speed, fmt: v => v.toFixed(1) + '×', on: v => LG.speed = v });
+  const tg = document.createElement('div'); tg.className = 'togs'; g.appendChild(tg);
+  addToggle(tg, { id: 'lin', label: 'Inertial frame', value: LG.inertial, on: v => LG.inertial = v });
+  addToggle(tg, { id: 'lfb', label: 'Forbidden zone', value: LG.forbidden, on: v => LG.forbidden = v });
+  addToggle(tg, { id: 'lct', label: 'Contours', value: LG.contours, on: v => LG.contours = v });
+  addToggle(tg, { id: 'ltr', label: 'Trails', value: LG.trails, on: v => LG.trails = v });
+  g = section(panel, 'Lagrange points');
+  const tb = document.createElement('div'); tb.id = 'ltab'; g.appendChild(tb);
+  addNote(g, 'C<sub>J</sub> is the Jacobi constant, the one conserved quantity of the restricted problem, found by Jacobi in 1836. A particle with C<sub>J</sub> above a point’s value cannot pass through it.');
+}
+lagCv.addEventListener('pointerdown', e => { const r = lagCv.getBoundingClientRect(), X = e.clientX - r.left, Y = e.clientY - r.top; lagCv.setPointerCapture(e.pointerId); LG.dragging = { X0: X, Y0: Y, X, Y, moved: false }; });
+lagCv.addEventListener('pointermove', e => { if (!LG.dragging) return; const r = lagCv.getBoundingClientRect(); LG.dragging.X = e.clientX - r.left; LG.dragging.Y = e.clientY - r.top; if (Math.hypot(LG.dragging.X - LG.dragging.X0, LG.dragging.Y - LG.dragging.Y0) > 4) LG.dragging.moved = true; });
+lagCv.addEventListener('pointerup', () => {
+  const d = LG.dragging; if (!d) return; LG.dragging = null; const I = lagStageInfo(), [x, y] = sToRot(d.X0, d.Y0, I);
+  let vx = 0, vy = 0;
+  if (d.moved) { const vix = (d.X - d.X0) / I.s * .6, viy = -(d.Y - d.Y0) / I.s * .6;
+    if (LG.inertial) { const rx = vix * I.c + viy * I.sn, ry = -vix * I.sn + viy * I.c; vx = rx + y; vy = ry - x; } else { vx = vix; vy = viy; } }
+  addParticle(x, y, vx, vy);
+});
+lagCv.addEventListener('pointercancel', () => LG.dragging = null);
+
+/* =====================================================================
+   GALLERY
+   ===================================================================== */
+const GAL = [
+  ['figure8', 'Moore 1993 · Chenciner & Montgomery 2000'], ['lagrange', 'Lagrange 1772', ], ['euler', 'Euler 1767'],
+  ...SHUV.filter(s => s[4] < 30).map(s => [s[0], 'Šuvakov & Dmitrašinović 2013'])
+];
+const galItems = [];
+function buildGallery() {
+  const host = $('#ggrid');
+  for (const [key, who] of GAL) {
+    const pr = PRESETS[key]; const card = document.createElement('article'); card.className = 'gcard';
+    const nums = pr.p1 ? `T = ${pr.T} · p₁ ${pr.p1.toFixed(6)} · p₂ ${pr.p2.toFixed(6)}` : `T = ${pr.T.toFixed(4)} · equal masses`;
+    card.innerHTML = `<canvas aria-label="${pr.name} orbit animation"></canvas><div class="gmeta"><div class="eyebrow">${who}</div><h3>${pr.name}</h3><p class="gnum">${nums}</p><button class="btn">Run in simulator</button></div>`;
+    host.appendChild(card);
+    const item = { key, pr, cv: card.querySelector('canvas'), data: null, visible: false, phase: Math.random() };
+    const go = () => { switchTab('sim'); loadPreset(key); setRunning(true); };
+    card.querySelector('button').addEventListener('click', go); item.cv.addEventListener('click', go);
+    galItems.push(item);
+  }
+  const io = new IntersectionObserver(es => es.forEach(e => { const it = galItems.find(g => g.cv === e.target); if (it) it.visible = e.isIntersecting; }), { rootMargin: '100px' });
+  galItems.forEach(it => io.observe(it.cv));
+  let qi = 0; const next = () => { if (qi >= galItems.length) return; computeGal(galItems[qi++]); setTimeout(next, 0); }; next();
+}
+function computeGal(it) {
+  const d = it.pr.make(), s = new Sys(d.m, d.p, d.v); centerCOM(s);
+  const T = it.pr.T, S = 900, o = { adaptive: true, eta: .003, dt: Math.min(.002, T / S), integrator: 'yoshida' };
+  const paths = [0, 1, 2].map(() => new Float32Array(S * 2)); let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+  for (let k = 0; k < S; k++) { advance(s, k * T / S, o, null, 1e7);
+    for (let i = 0; i < 3; i++) { paths[i][k * 2] = s.x[i]; paths[i][k * 2 + 1] = s.y[i]; minx = Math.min(minx, s.x[i]); maxx = Math.max(maxx, s.x[i]); miny = Math.min(miny, s.y[i]); maxy = Math.max(maxy, s.y[i]); } }
+  it.data = { paths, S, bb: [minx, maxx, miny, maxy], dur: clamp(T * .9, 5, 14) };
+}
+function galDraw(now, dtR) {
+  for (const it of galItems) {
+    if (!it.visible) continue; const cv = it.cv, w = cv.clientWidth, h = cv.clientHeight; if (!w) continue;
+    if (cv.width !== Math.round(w * DPR)) { cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); it.stars = makeStars(w, h, 900); }
+    const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = COL.ink; c.fillRect(0, 0, w, h); if (it.stars) c.drawImage(it.stars, 0, 0, w, h);
+    if (!it.data) { c.fillStyle = COL.dim; c.font = '11px ' + cssv('--mono'); c.textAlign = 'center'; c.fillText('integrating one period…', w / 2, h / 2); c.textAlign = 'left'; continue; }
+    const { paths, S, bb, dur } = it.data, p = pal();
+    const s = Math.min((w - 36) / (bb[1] - bb[0] || 1), (h - 36) / (bb[3] - bb[2] || 1)), cx = (bb[0] + bb[1]) / 2, cy = (bb[2] + bb[3]) / 2;
+    const X = x => w / 2 + (x - cx) * s, Y = y => h / 2 - (y - cy) * s;
+    if (!reduceMotion) it.phase = (it.phase + dtR / dur) % 1;
+    const head = Math.floor(it.phase * S), tail = Math.floor(S * .22);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (let i = 0; i < 3; i++) { const P2 = paths[i];
+      c.globalAlpha = .18; c.strokeStyle = p[i]; c.lineWidth = 1; c.beginPath();
+      for (let k = 0; k <= S; k++) { const q = (k % S) * 2; k ? c.lineTo(X(P2[q]), Y(P2[q + 1])) : c.moveTo(X(P2[q]), Y(P2[q + 1])); } c.stroke();
+      const G = 14, per = Math.ceil(tail / G);
+      for (let g = 0; g < G; g++) { c.globalAlpha = Math.pow((g + 1) / G, 1.4); c.lineWidth = .6 + 1.8 * (g + 1) / G; c.beginPath();
+        for (let k = g * per; k <= Math.min(tail, (g + 1) * per); k++) { const q = (((head - tail + k) % S) + S) % S * 2; k === g * per ? c.moveTo(X(P2[q]), Y(P2[q + 1])) : c.lineTo(X(P2[q]), Y(P2[q + 1])); }
+        c.stroke(); }
+    }
+    c.globalAlpha = 1;
+    for (let i = 0; i < 3; i++) { const q = head * 2; drawBody(c, X(paths[i][q]), Y(paths[i][q + 1]), 4, p[i], true); }
+  }
+}
+
+/* =====================================================================
+   HISTORY
+   ===================================================================== */
+const ERAS = [
+  ['Newton’s inheritance', [
+    ['1687', 'The two-body problem is solved; the Moon is not', 'Isaac Newton · Principia', 'Newton showed that two bodies under inverse-square gravity move on conic sections, deriving Kepler’s laws. The Moon, pulled by both Earth and Sun, refused to fit, and he is said to have complained that lunar theory made his head ache.'],
+    ['1747–49', 'The Moon’s perigee nearly overturns gravity', 'Clairaut · d’Alembert · Euler', 'First-order calculations predicted only half the observed rotation of the Moon’s orbit, and Clairaut briefly proposed changing Newton’s law. Carrying the approximation further brought theory into agreement: the start of perturbation theory.'],
+    ['1767', 'Three bodies in a straight line', 'Leonhard Euler', 'Euler found the first exact three-body solutions: configurations where the bodies stay collinear while the whole line rotates, the spacing fixed by a fifth-degree equation in the masses.', { preset: 'euler', label: 'Run Euler’s solution' }],
+    ['1772', 'The equilateral triangle', 'Joseph-Louis Lagrange', 'Lagrange’s prize essay added solutions where the bodies sit at the corners of an equilateral triangle that turns rigidly, for any masses. Together with Euler’s, these are the only configurations that keep their shape.', { preset: 'lagrange', label: 'Run Lagrange’s solution' }],
+  ]],
+  ['The search for integrals', [
+    ['1836', 'A constant for the restricted problem', 'Carl Gustav Jacobi', 'For a massless body moving near two others on circular orbits, Jacobi found a conserved combination of energy and rotation. Its value fences the body out of whole regions of space.', { tab: 'lagrange', label: 'Explore the Jacobi landscape' }],
+    ['1878', 'Hill’s lunar theory', 'George William Hill', 'Hill rebuilt lunar theory around a periodic reference orbit and drew the zero-velocity curves that bound where the Moon can go, proving it can never escape Earth.'],
+    ['1887', 'No new conserved quantities', 'Heinrich Bruns', 'Bruns proved that apart from the ten classical integrals there are no others expressible as algebraic functions of positions and velocities. The search for a closed formula was over in that sense.'],
+    ['1889–90', 'King Oscar’s prize and the birth of chaos', 'Henri Poincaré', 'Poincaré won the King of Sweden’s prize for work on the stability of the Solar System. While the memoir was being printed, Lars Edvard Phragmén’s questions exposed an error. Fixing it, Poincaré found orbits that tangle infinitely near unstable periodic ones: sensitive dependence on initial conditions. He paid more than the prize money to have the first printing destroyed.', { preset: 'random', label: 'Watch a chaotic triple', twins: true }],
+  ]],
+  ['Convergence and chaos', [
+    ['1906', 'Lagrange’s points found in the sky', 'Max Wolf', 'Wolf discovered 588 Achilles, an asteroid leading Jupiter by 60°. Lagrange’s triangle was not just mathematics; thousands of Jupiter Trojans are now known.', { preset: 'trojan', label: 'Run Sun, Jupiter, Trojan' }],
+    ['1912', 'A solution nobody can use', 'Karl F. Sundman', 'Sundman proved the three-body motion can be written as a convergent power series for all time, provided angular momentum is nonzero. The series converges so slowly that one estimate put the needed terms at ten to the power of eight million.'],
+    ['1913', 'The Pythagorean problem', 'Carl Burrau', 'Burrau placed masses 3, 4 and 5 at rest on a 3-4-5 triangle and followed them by hand through the first close encounters. The end state stayed unknown for half a century.', { preset: 'pythagorean', label: 'Run the Pythagorean problem' }],
+    ['1954–63', 'KAM theory', 'Kolmogorov · Arnold · Moser', 'Most quasi-periodic motions in a nearly integrable system survive small perturbations. Order and chaos coexist, finely interleaved, which explains why planetary systems can be both chaotic and long-lived.'],
+    ['1967', 'Computers finish Burrau’s problem', 'Victor Szebehely · C. Frederick Peters', 'With regularized coordinates to survive near-collisions, they showed the Pythagorean triple ends with a binary of the two heavier bodies and the lightest one escaping.', { preset: 'pythagorean', label: 'Run to the ejection' }],
+  ]],
+  ['The computer era', [
+    ['1975', 'Families of periodic orbits', 'Roger Broucke · Michel Hénon', 'Systematic numerical searches mapped whole families of planar periodic orbits, showing that solutions come in continuous one-parameter sets.'],
+    ['1991', 'Sundman generalized', 'Qiudong Wang', 'Wang extended the convergent-series result to any number of bodies, a complete answer to the original prize question that is just as useless for prediction.'],
+    ['1993', 'The figure-eight', 'Cristopher Moore', 'Searching numerically for braided orbits, Moore found three equal masses sharing one figure-eight curve. Chenciner and Montgomery proved it exists in 2000, and Carles Simó showed it is stable.', { preset: 'figure8', label: 'Run the figure-eight' }],
+    ['2008', 'The novel', 'Liu Cixin', 'Liu’s science-fiction novel, named after the problem, imagines a civilization in a chaotic triple-star system. Ken Liu’s English translation won the Hugo Award in 2015, bringing the problem to a mass audience.'],
+    ['2013', 'Thirteen new families', 'Milovan Šuvakov · Veljko Dmitrašinović', 'A numerical search in shape space uncovered 13 new families of equal-mass periodic orbits, with names like butterfly, moth, goggles and yin-yang.', { preset: 'butterfly1', label: 'Run Butterfly I' }],
+    ['2017', 'Hundreds more', 'Xiaoming Li · Shijun Liao', 'Using very high-precision “clean numerical simulation”, Li and Liao reported more than 600 new periodic families. Later searches by Liao’s group extended the catalog into the thousands, including unequal masses.'],
+    ['2019', 'A statistical solution', 'Nicholas Stone · Nathan Leigh', 'Rather than predicting one chaotic orbit, they derived the probability distribution of outcomes, such as which body is ejected and how fast, for non-hierarchical triples.', { preset: 'sling', label: 'Run a scattering encounter' }],
+  ]],
+];
+function buildHistory() {
+  const host = $('#timeline'); let html = '';
+  for (const [era, items] of ERAS) {
+    html += `<h3 class="era">${era}</h3><ol class="tl">`;
+    for (const [y, title, who, text, tr] of items)
+      html += `<li><div class="yr">${y}</div><div><h3>${title}</h3><div class="who">${who}</div><p>${text}</p>${tr ? `<button class="btn" data-try='${JSON.stringify(tr)}'>${tr.label} →</button>` : ''}</div></li>`;
+    html += '</ol>';
+  }
+  host.innerHTML = html;
+  host.addEventListener('click', e => { const b = e.target.closest('[data-try]'); if (!b) return; const t = JSON.parse(b.dataset.try);
+    if (t.tab) { switchTab(t.tab); if (!LG.parts.length) LPRE.tadpole(); return; }
+    switchTab('sim'); loadPreset(t.preset); if (t.twins) { P.twins = 8; document.getElementById('twins').value = 8 / 24 * 1000; document.getElementById('twins-o').textContent = '8'; spawnGhosts(); } setRunning(true); window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); });
+}
+const HV = { two: null, three: null };
+function hvReset(which) {
+  if (which === 'two') { const s = new Sys([1, .35], [[0, 0], [1, 0]], [[0, 0], [0, .78 * Math.sqrt(1.35)]]); centerCOM(s); HV.two = { s, tr: [new Trail(1200), new Trail(1200)] }; }
+  else { const d = makeRandom(), s = new Sys(d.m, d.p, d.v, 1, .01); centerCOM(s); HV.three = { s, tr: [0, 1, 2].map(() => new Trail(1500)), sc: 0 }; }
+}
+const hvOpt = { adaptive: true, eta: .01, dt: .004, integrator: 'yoshida' };
+function hvTick(dtR) {
+  for (const [key, id, speed] of [['two', '#hv2', 1.6], ['three', '#hv3', 1.2]]) {
+    const cv = $(id), w = cv.clientWidth, h = cv.clientHeight; if (!w) continue;
+    if (cv.width !== Math.round(w * DPR)) { cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); cv._stars = makeStars(w, h, 1400); }
+    if (!HV[key]) hvReset(key);
+    const H = HV[key], s = H.s;
+    const scale = key === 'two' ? Math.min(w, h) * .32 : (() => { let R = 0; for (let i = 0; i < s.n; i++) R = Math.max(R, Math.hypot(s.x[i], s.y[i])); const t = Math.min(w, h) * .44 / Math.max(R, .9); H.sc = H.sc ? H.sc + (t - H.sc) * (t < H.sc ? .1 : .02) : t; return H.sc; })();
+    if (!reduceMotion) advance(s, s.t + speed * dtR, hvOpt, st => sampleTrails(st, H.tr, (1 / scale) ** 2, .05), 20000);
+    if (key === 'three' && (s.t > 70 || Math.max(...[0, 1, 2].map(i => Math.hypot(s.x[i], s.y[i]))) > 5)) hvReset('three');
+    const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = COL.ink; c.fillRect(0, 0, w, h); if (cv._stars) c.drawImage(cv._stars, 0, 0, w, h);
+    const V = { cx: w / 2, cy: h / 2, s: scale, ox: 0, oy: 0 }, p = pal();
+    for (let i = 0; i < s.n; i++) strokeTrail(c, H.tr[i], p[i], .9, 1.4, 'glow', V);
+    for (let i = 0; i < s.n; i++) drawBody(c, w / 2 + s.x[i] * scale, h / 2 - s.y[i] * scale, clamp(5 * Math.cbrt(s.m[i]), 2.5, 9), p[i], true);
+  }
+}
+
+/* =====================================================================
+   TABS, RESIZE, LOOP
+   ===================================================================== */
+let activeTab = 'sim';
+function switchTab(t) {
+  activeTab = t;
+  document.querySelectorAll('[data-pane]').forEach(s => s.hidden = s.dataset.pane !== t);
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
+  requestAnimationFrame(resizeAll);
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+function resizeAll() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (w && (w !== simW || h !== simH)) { const first = !simW; simW = w; simH = h; simCv.width = Math.round(w * DPR); simCv.height = Math.round(h * DPR); starCv = makeStars(w, h); if (first) cam.s = Math.min(w, h) * .46 / viewR; }
+  const ls = $('#lagStage'), lw = ls.clientWidth, lh = ls.clientHeight;
+  if (lw && (lw !== LG.w || lh !== LG.h)) { LG.w = lw; LG.h = lh; lagCv.width = Math.round(lw * DPR); lagCv.height = Math.round(lh * DPR); LG.fkey = ''; }
+}
+new ResizeObserver(resizeAll).observe(stage);
+new ResizeObserver(resizeAll).observe($('#lagStage'));
+window.addEventListener('resize', resizeAll);
+
+buildSimPanel(); buildLagPanel(); buildGallery(); buildHistory();
+resizeAll(); loadPreset('figure8'); setRunning(running);
+lagMuChanged(); LPRE.swarm(); LG.speed = 2; lui.speed.set(2, true); addParticle(-LG.mu + Math.cos(70 * Math.PI / 180), Math.sin(70 * Math.PI / 180), 0, 0);
+const startTab = location.hash.slice(1); if (['sim', 'lagrange', 'gallery', 'history'].includes(startTab)) switchTab(startTab);
+
+let last = performance.now(), frameN = 0;
+function loop(now) {
+  const dtR = Math.min(.05, (now - last) / 1000); last = now; frameN++;
+  try {
+    if (activeTab === 'sim') { simTick(dtR); drawSim(); if (frameN % 6 === 0) updateReadouts(); }
+    else if (activeTab === 'lagrange') { if (!reduceMotion || LG.parts.length) lagTick(dtR); lagDraw(); }
+    else if (activeTab === 'gallery') galDraw(now, dtR);
+    else hvTick(dtR);
+  } catch (err) { console.error(err); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>
